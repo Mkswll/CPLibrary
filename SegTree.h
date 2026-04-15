@@ -1,6 +1,6 @@
 /*
 
-Mkswll's LazySegTree class
+Mkswll's SegTree class, inspired by jiangly's SegmentTree
 
 Assumptions:
 - everything is 1-indexed and closed on both ends, including queries
@@ -10,16 +10,16 @@ Usage:
 
 */
 template <typename T>
-struct LazySegTree {
+struct SegTree {
 	int n;
 	vector<T> t;
 	
-	LazySegTree(): n{0} {}
-	LazySegTree(int n_, T v_ = T{}) {
+	SegTree(): n{0} {}
+	SegTree(int n_, T v_ = T{}) {
 		init(n_, v_);
 	}
 	template <typename T2>
-	LazySegTree(int n_, const T2 &info_, bool one_indexed = true) {
+	SegTree(int n_, const T2 &info_, bool one_indexed = true) {
 		vector<T> info(n_ + 1);
 		for (int i = 1; i <= n_; ++i) info[i] = info_[i - !one_indexed];
 		init(info);
@@ -56,29 +56,20 @@ struct LazySegTree {
 		t[cur] = t[cur << 1] + t[cur << 1 | 1];
 	}
 	
-	void push_down(int cur, int l, int r) {
-		int mid = (l + r) >> 1;
-		t[cur << 1].update(t[cur], l, mid);
-		t[cur << 1 | 1].update(t[cur], mid + 1, r);
-		t[cur].clear_tag();
-	}
-	
 	template <typename T2> 
-	void update(int ql, int qr, const T2 &val) {
-		update(1, 1, n, ql, qr, val);
+	void update(int q, const T2 &val) {
+		update(1, 1, n, q, val);
 	}
-	
 	template <typename T2>
-	void update(int cur, int l, int r, int ql, int qr, const T2 &val) {
-		if (l > qr || r < ql) return;
-		if (l >= ql && r <= qr) {
+	void update(int cur, int l, int r, int q, const T2 &val) {
+		if (l > q || r < q) return;
+		if (l == r) {
 			t[cur].update(val, l, r);
 			return;
 		}
-		push_down(cur, l, r);
 		int mid = (l + r) >> 1;
-		update(cur << 1, l, mid, ql, qr, val);
-		update(cur << 1 | 1, mid + 1, r, ql, qr, val);
+		update(cur << 1, l, mid, q, val);
+		update(cur << 1 | 1, mid + 1, r, q, val);
 		push_up(cur);
 	}
 	
@@ -89,7 +80,6 @@ struct LazySegTree {
 	T query(int cur, int l, int r, int ql, int qr) {
 		if (l > qr || r < ql) return T{};
 		if (l >= ql && r <= qr) return t[cur];
-		push_down(cur, l, r);
 		int mid = (l + r) >> 1;
 		return query(cur << 1, l, mid, ql, qr) + query(cur << 1 | 1, mid + 1, r, ql, qr);
 	}
@@ -97,30 +87,15 @@ struct LazySegTree {
 };
 
 struct Info {
-	// change fields
 	long long sm = 0;
-	long long tag = 0;
-	
-	
-	void update(const Info &other, int l = 0, int r = 0) {
-		// change update
-		sm += other.tag * (r - l + 1);
-		tag += other.tag;
-	}
 	
 	template <typename T2> 
 	void update(const T2 &val, int l = 0, int r = 0) {
-		// change update
 		sm += val;
-		tag += val;
-	}
-	
-	void clear_tag() {
-		tag = 0;
 	}
 	
 	Info() {}
-	Info(auto x): sm{x} {} // change ctor
+	Info(auto x): sm{x} {}
 };
 
 Info operator +(const Info &a, const Info &b) {

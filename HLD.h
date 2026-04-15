@@ -2,16 +2,15 @@
 
 Mkswll's HLD class
 
-Depends on:
-- LazySegTree
-- Graph
+Usage:
+- import LazySegTree first
 
 */
 template <typename T>
 struct HLD {
 	int n;
 	Tree *t;
-	LazySegTree<T, T> seg;
+	LazySegTree<T> seg;
 	vector<int> nid, hc, top, sub, par, dep;
 	int tot = 0;
 	
@@ -54,7 +53,8 @@ struct HLD {
 		dfs2(t->rt, t->rt);
 	}
 	
-	void update(int u, int v, T val) {
+	template <typename T2>
+	void update(int u, int v, const T2 &val) {
 		while (top[u] != top[v]) {
 			if (dep[top[u]] < dep[top[v]]) swap(u, v);
 			seg.update(nid[top[u]], nid[u], val);
@@ -65,24 +65,25 @@ struct HLD {
 		seg.update(nid[u], nid[v], val);
 	}
 	
-	void update_sub(int u, T val) {
+	template <typename T2>
+	void update(int u, const T2 &val) {
 		seg.update(nid[u], nid[u] + sub[u] - 1, val);
 	}
 	
 	T query(int u, int v) {
-		T ret = 0;
+		T ret{};
 		while (top[u] != top[v]) {
 			if (dep[top[u]] < dep[top[v]]) swap(u, v);
-			ret = seg.operate(ret, seg.query(nid[top[u]], nid[u]));
+			ret = ret + seg.query(nid[top[u]], nid[u]);
 			u = par[top[u]];
 		}
 		
 		if (dep[u] > dep[v]) swap(u, v);
-		ret = seg.operate(ret, seg.query(nid[u], nid[v]));
+		ret = ret + seg.query(nid[u], nid[v]);
 		return ret;
 	}
 	
-	T query_sub(int u) {
+	T query(int u) {
 		return seg.query(nid[u], nid[u] + sub[u] - 1);
 	}
 	
