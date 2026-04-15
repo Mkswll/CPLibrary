@@ -4,6 +4,7 @@ Mkswll's LazySegTree class
 
 Assumptions:
 - everything is 1-indexed and closed on both ends, including queries
+- find_first, find_last assume that if pred(t[cur]), then all parents of cur satisfies pred, and some leaf under cur satisfies pred
 
 Usage:
 - change Info class only!
@@ -35,8 +36,8 @@ struct LazySegTree {
 		init(info);
 	}
 	
-	void init(vector<T> info, bool one_indexed = true) { // T2 is vector or list
-		n = info.size();
+	void init(const vector<T> &info, bool one_indexed = true) {
+		n = info.size() - one_indexed;
 		if (!n) return;
 		t.assign(4 << __lg(n), T{});
 		auto build = [&](auto &&self, int cur, int l, int r) -> void {
@@ -94,6 +95,37 @@ struct LazySegTree {
 		return query(cur << 1, l, mid, ql, qr) + query(cur << 1 | 1, mid + 1, r, ql, qr);
 	}
 	
+	template <typename F>
+	int find_first(int ql, int qr, F &&pred) {
+		return find_first(1, 1, n, ql, qr, pred);
+	}
+	template <typename F>
+	int find_first(int cur, int l, int r, int ql, int qr, F &&pred) {
+		if (l > qr || r < ql) return -1;
+		if (l >= ql && r <= qr && !pred(t[cur])) return -1;
+		if (l == r) return pred(t[cur]) ? l : -1;
+		push_down(cur, l, r);
+		int mid = (l + r) >> 1;
+		int lres = find_first(cur << 1, l, mid, ql, qr, pred);
+		if (lres != -1) return lres;
+		return find_first(cur << 1 | 1, mid + 1, r, ql, qr, pred);
+	}
+	
+	template <typename F>
+	int find_last(int ql, int qr, F &&pred) {
+		return find_last(1, 1, n, ql, qr, pred);
+	}
+	template <typename F>
+	int find_last(int cur, int l, int r, int ql, int qr, F &&pred) {
+		if (l > qr || r < ql) return -1;
+		if (l >= ql && r <= qr && !pred(t[cur])) return -1;
+		if (l == r) return pred(t[cur]) ? l : -1;
+		push_down(cur, l, r);
+		int mid = (l + r) >> 1;
+		int rres = find_last(cur << 1 | 1, mid + 1, r, ql, qr, pred);
+		if (rres != -1) return rres;
+		return find_last(cur << 1, l, mid, ql, qr, pred);
+	}
 };
 
 struct Info {
