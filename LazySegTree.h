@@ -143,7 +143,7 @@ struct Info {
 	template <typename T2> 
 	void update(const T2 &val, int l = 0, int r = 0) {
 		// change update
-		sm += val;
+		sm += (long long) val * (r - l + 1);
 		tag += val;
 	}
 	

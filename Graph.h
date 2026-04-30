@@ -8,20 +8,20 @@ struct Graph {
 	vector<vector<int>> adj;
 	
 	Graph() {}
+	Graph(int n_): n{n_}, adj(n_ + 1) {};
 	
-	Graph(int _n): n{_n}, adj(_n + 1) {};
+	vector<int> &operator [](int u) {
+		return adj[u];
+	}
 	
 	void add(int u, int v) {
 		adj[u].push_back(v);
-	}
-	
-	vector<int> &next(int u) {
-		return adj[u];
 	}
 };
 
 struct Tree : public Graph {
 	int rt;
 	
-	Tree(int _n, int _rt = 1): Graph{_n}, rt{_rt} {}
+	Tree(int n_, int rt_ = 1): Graph{n_}, rt{rt_} {}
 };
+
