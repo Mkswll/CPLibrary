@@ -118,6 +118,14 @@
       "description": "Linear basis over XOR",
       "category": "Math",
       "deps": []
+    },
+    {
+      "id": "Starter",
+      "file": "Starter.h",
+      "name": "Starter",
+      "description": "Starter file",
+      "category": "Other",
+      "deps": []
     }
   ]
 }

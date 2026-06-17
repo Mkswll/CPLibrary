@@ -116,8 +116,7 @@ export async function confirmInsert(
     lines.join("\n"),
     { modal: true },
     "Insert",
-    "Copy to Clipboard",
-    "Cancel"
+    "Copy to Clipboard"
   );
 
   if (choice === "Copy to Clipboard") {
