@@ -10,7 +10,41 @@ Import competitive programming snippets with automatic dependency resolution and
 - **Deduplication** — snippets marked with `// @cplib <id>` in the file are skipped on re-import
 - **Preview** — see resolved order and generated text before inserting
 
+## Installation
+
+Download the latest `.vsix` from **[GitHub Releases](https://github.com/YOUR_USER/CPLibrary/releases)** (Assets → `cplib-x.y.z.vsix`).
+
+**VS Code or Cursor:**
+
+1. Open **Extensions** in the sidebar
+2. Click the **`...`** menu at the top of the Extensions view
+3. Choose **Install from VSIX...**
+4. Select the downloaded `.vsix` file
+5. Reload the window if prompted
+
+You should see the **CP Library** icon in the activity bar (left).
+
+**From the terminal** (after downloading the file):
+
+```bash
+code --install-extension ~/Downloads/cplib-0.1.0.vsix
+# or Cursor:
+cursor --install-extension ~/Downloads/cplib-0.1.0.vsix
+```
+
+**Updates:** download the new `.vsix` from Releases and install it again (same steps).
+
+**Recommended:** set your own snippet library folder (persists across extension updates):
+
+```json
+"cplib.libraryPath": "/path/to/CPLibrary/library"
+```
+
+(Settings → search `cplib library path`, or edit User Settings JSON.)
+
 ## Development
+
+For working on the extension itself:
 
 ```bash
 npm install
@@ -18,6 +52,15 @@ npm run compile
 ```
 
 Open this folder in VS Code and press **F5** to launch the Extension Development Host.
+
+**Package a release:**
+
+```bash
+npm run compile
+npx @vscode/vsce package
+```
+
+Upload the generated `cplib-<version>.vsix` to GitHub Releases.
 
 ## Configuration
 
