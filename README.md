@@ -12,9 +12,9 @@ Import competitive programming snippets with automatic dependency resolution and
 
 ## Installation
 
-Download the latest `.vsix` from **[GitHub Releases](https://github.com/YOUR_USER/CPLibrary/releases)** (Assets → `cplib-x.y.z.vsix`).
+Download the latest `.vsix` from **[GitHub Releases](https://github.com/Mkswll/CPLibrary/releases)** (Assets → `cplib-x.y.z.vsix`).
 
-**VS Code or Cursor:**
+**VS Code:**
 
 1. Open **Extensions** in the sidebar
 2. Click the **`...`** menu at the top of the Extensions view
@@ -28,8 +28,6 @@ You should see the **CP Library** icon in the activity bar (left).
 
 ```bash
 code --install-extension ~/Downloads/cplib-0.1.0.vsix
-# or Cursor:
-cursor --install-extension ~/Downloads/cplib-0.1.0.vsix
 ```
 
 **Updates:** download the new `.vsix` from Releases and install it again (same steps).
