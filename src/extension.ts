@@ -1,12 +1,26 @@
 import * as vscode from "vscode";
 import { confirmInsert, insertSnippets } from "./insert";
 import { Library } from "./library";
+import { addSnippet, editSnippet } from "./manage";
 import { previewSnippet } from "./preview";
 import { SnippetTreeProvider } from "./tree";
 
 let library: Library;
+let extensionContext: vscode.ExtensionContext;
+
+function snippetIdFromArg(arg: unknown): string | undefined {
+  if (typeof arg === "string") {
+    return arg;
+  }
+  if (arg && typeof arg === "object" && "snippetId" in arg) {
+    const id = (arg as { snippetId?: string }).snippetId;
+    return typeof id === "string" ? id : undefined;
+  }
+  return undefined;
+}
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  extensionContext = context;
   library = new Library();
   await library.load(context);
 
@@ -15,10 +29,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerTreeDataProvider("cplib.snippetTree", treeProvider)
   );
 
+  const refresh = async () => {
+    await library.load(extensionContext);
+    treeProvider.refresh();
+  };
+
   context.subscriptions.push(
     vscode.commands.registerCommand("cplib.refresh", async () => {
-      await library.load(context);
-      treeProvider.refresh();
+      await refresh();
       vscode.window.showInformationMessage("CP Library refreshed.");
     })
   );
@@ -36,7 +54,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "cplib.importFromTree",
-      async (id?: string) => {
+      async (arg?: unknown) => {
+        const id = snippetIdFromArg(arg);
         if (!id) {
           return;
         }
@@ -58,7 +77,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "cplib.previewFromTree",
-      async (id?: string) => {
+      async (arg?: unknown) => {
+        const id = snippetIdFromArg(arg);
         if (!id) {
           return;
         }
@@ -68,10 +88,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand("cplib.addSnippet", async () => {
+      await addSnippet(library, refresh);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("cplib.editSnippet", async () => {
+      await editSnippet(library, refresh);
+    })
+  );
+
+  context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async (e) => {
       if (e.affectsConfiguration("cplib.libraryPath")) {
-        await library.load(context);
-        treeProvider.refresh();
+        await refresh();
       }
     })
   );

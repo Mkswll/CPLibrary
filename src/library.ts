@@ -46,6 +46,12 @@ export class Library {
     return this.snippets.get(id)?.deps ?? [];
   }
 
+  getDependents(id: string): string[] {
+    return this.getAll()
+      .filter((s) => s.id !== id && s.deps.includes(id))
+      .map((s) => s.id);
+  }
+
   async readSnippet(id: string): Promise<Snippet> {
     const meta = this.snippets.get(id);
     if (!meta) {
@@ -122,6 +128,55 @@ export class Library {
 
   formatImportBlock(snippets: Snippet[]): string {
     return snippets.map((s) => this.formatSnippetBlock(s)).join("\n\n") + "\n";
+  }
+
+  hasId(id: string): boolean {
+    return this.snippets.has(id);
+  }
+
+  async isWritable(): Promise<boolean> {
+    try {
+      await fs.promises.access(this.libraryPath, fs.constants.W_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  toRelativeFile(absolutePath: string): string {
+    const rel = path.relative(this.libraryPath, absolutePath);
+    if (rel.startsWith("..") || path.isAbsolute(rel)) {
+      throw new Error("File must be inside the library folder.");
+    }
+    return rel.split(path.sep).join("/");
+  }
+
+  async upsertSnippet(meta: SnippetMeta): Promise<void> {
+    this.snippets.set(meta.id, meta);
+    this.validateDeps();
+    await this.saveManifest();
+  }
+
+  async removeSnippet(id: string): Promise<boolean> {
+    const dependents = this.getDependents(id);
+    if (dependents.length > 0) {
+      throw new Error(
+        `Cannot remove "${id}": required by ${dependents.join(", ")}. Edit those snippets and remove the dependency first.`
+      );
+    }
+    if (!this.snippets.delete(id)) {
+      return false;
+    }
+    this.validateDeps();
+    await this.saveManifest();
+    return true;
+  }
+
+  async saveManifest(): Promise<void> {
+    const manifestPath = path.join(this.libraryPath, "manifest.json");
+    const snippets = this.getAll();
+    const body = JSON.stringify({ snippets }, null, 2) + "\n";
+    await fs.promises.writeFile(manifestPath, body, "utf8");
   }
 
   private resolveLibraryPath(context: vscode.ExtensionContext): string {

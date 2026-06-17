@@ -30,8 +30,21 @@ Open this folder in VS Code and press **F5** to launch the Extension Development
 
 ## Adding snippets
 
-1. Copy a `.h` file into `library/`
-2. Add an entry to `library/manifest.json` with `id`, `file`, `name`, `description`, `category`, and `deps`
+**UI (recommended):** `CP Library: Add Snippet` from the Command Palette (or `+` in the sidebar).
+
+1. Choose **Use existing file** or **Create new file** (tabs under Snippet file)
+2. Enter ID, name, description, category
+3. Multi-select dependencies from existing snippets
+
+**Use existing file:** pick a `.h` already in `library/`. **Create new file:** set path + paste code.
+
+Edit later with `CP Library: Edit Snippet` (sidebar pencil icon or Command Palette). Use **Remove from library** on the form to delete the manifest entry (the `.h` file is kept on disk).
+
+**Library file paths:** on **Create new file**, use **Choose path…** to create subfolders or type the path manually.
+
+**Manual:** add a `.h` file under `library/` and an entry in `library/manifest.json`.
+
+For a writable library when using an installed `.vsix`, set `cplib.libraryPath` to your repo's `library/` folder.
 
 ## Marker format
 
