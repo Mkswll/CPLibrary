@@ -1,0 +1,100 @@
+{
+  "snippets": [
+    {
+      "id": "DSU",
+      "file": "DSU.h",
+      "name": "DSU",
+      "description": "Disjoint set union with path compression and union by size",
+      "category": "Data Structures",
+      "deps": []
+    },
+    {
+      "id": "RollbackDSU",
+      "file": "RollbackDSU.h",
+      "name": "RollbackDSU",
+      "description": "DSU with rollback via history stack",
+      "category": "Data Structures",
+      "deps": []
+    },
+    {
+      "id": "Bitset",
+      "file": "Bitset.h",
+      "name": "Bitset",
+      "description": "Custom bitset using 64-bit words",
+      "category": "Data Structures",
+      "deps": []
+    },
+    {
+      "id": "SegTree",
+      "file": "SegTree.h",
+      "name": "SegTree",
+      "description": "Segment tree (point update, range query)",
+      "category": "Data Structures",
+      "deps": []
+    },
+    {
+      "id": "LazySegTree",
+      "file": "LazySegTree.h",
+      "name": "LazySegTree",
+      "description": "Lazy segment tree (range update, range query)",
+      "category": "Data Structures",
+      "deps": []
+    },
+    {
+      "id": "LeftistHeap",
+      "file": "LeftistHeap.h",
+      "name": "LeftistHeap",
+      "description": "Mergeable leftist heap",
+      "category": "Data Structures",
+      "deps": []
+    },
+    {
+      "id": "Graph",
+      "file": "Graph.h",
+      "name": "Graph / Tree",
+      "description": "Adjacency-list graph and tree types",
+      "category": "Graph",
+      "deps": []
+    },
+    {
+      "id": "HLD",
+      "file": "HLD.h",
+      "name": "HLD",
+      "description": "Heavy-light decomposition on a tree",
+      "category": "Graph",
+      "deps": ["Graph", "LazySegTree"]
+    },
+    {
+      "id": "Matrix",
+      "file": "Matrix.h",
+      "name": "Mat",
+      "description": "Matrix arithmetic, power, inverse",
+      "category": "Math",
+      "deps": []
+    },
+    {
+      "id": "XorBasis",
+      "file": "XorBasis.h",
+      "name": "XorBasis",
+      "description": "Linear basis over XOR",
+      "category": "Math",
+      "deps": []
+    },
+    {
+      "id": "NTT",
+      "file": "NTT.h",
+      "name": "NTT conv",
+      "description": "NTT convolution for Mint (requires Mint type)",
+      "category": "Math",
+      "deps": []
+    },
+    {
+      "id": "Poly",
+      "file": "Poly.h",
+      "name": "Poly",
+      "description": "Polynomial ops using conv()",
+      "category": "Math",
+      "deps": ["NTT"]
+    }
+  ]
+}

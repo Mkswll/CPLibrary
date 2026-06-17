@@ -1,0 +1,137 @@
+{
+  "name": "cplib",
+  "displayName": "CP Library",
+  "description": "Import competitive programming snippets with automatic dependency resolution",
+  "version": "0.1.0",
+  "publisher": "cplib",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Snippets",
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cplib.importSnippet",
+        "title": "CP Library: Import Snippet",
+        "icon": "$(insert)"
+      },
+      {
+        "command": "cplib.previewSnippet",
+        "title": "CP Library: Preview Snippet",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "cplib.refresh",
+        "title": "CP Library: Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cplib.importFromTree",
+        "title": "Import",
+        "icon": "$(insert)"
+      },
+      {
+        "command": "cplib.previewFromTree",
+        "title": "Preview",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cplib",
+          "title": "CP Library",
+          "icon": "$(library)"
+        }
+      ]
+    },
+    "views": {
+      "cplib": [
+        {
+          "id": "cplib.snippetTree",
+          "name": "Snippets"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "cplib.importSnippet",
+          "when": "view == cplib.snippetTree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cplib.refresh",
+          "when": "view == cplib.snippetTree",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "cplib.importFromTree",
+          "when": "view == cplib.snippetTree && viewItem == cplibSnippet",
+          "group": "inline@1"
+        },
+        {
+          "command": "cplib.previewFromTree",
+          "when": "view == cplib.snippetTree && viewItem == cplibSnippet",
+          "group": "inline@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "cplib.importSnippet",
+          "when": "editorLangId == cpp || editorLangId == c",
+          "group": "cplib@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "CP Library",
+      "properties": {
+        "cplib.libraryPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to snippet library folder (containing manifest.json). Empty uses the bundled library."
+        },
+        "cplib.insertPosition": {
+          "type": "string",
+          "enum": [
+            "cursor",
+            "top",
+            "afterIncludes"
+          ],
+          "default": "cursor",
+          "description": "Where to insert imported snippets."
+        },
+        "cplib.showPreviewBeforeInsert": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a confirmation dialog listing resolved snippets before inserting."
+        },
+        "cplib.detectExisting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Skip snippets already marked in the file with // @cplib markers."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}
