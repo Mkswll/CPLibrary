@@ -3,35 +3,32 @@ import { confirmInsert, insertSnippets } from "./insert";
 import { Library } from "./library";
 import { addSnippet, editSnippet } from "./manage";
 import { previewSnippet } from "./preview";
-import { SnippetTreeProvider } from "./tree";
+import { SnippetSidebarProvider } from "./sidebar";
 
 let library: Library;
 let extensionContext: vscode.ExtensionContext;
-
-function snippetIdFromArg(arg: unknown): string | undefined {
-  if (typeof arg === "string") {
-    return arg;
-  }
-  if (arg && typeof arg === "object" && "snippetId" in arg) {
-    const id = (arg as { snippetId?: string }).snippetId;
-    return typeof id === "string" ? id : undefined;
-  }
-  return undefined;
-}
+let sidebarProvider: SnippetSidebarProvider;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   extensionContext = context;
   library = new Library();
   await library.load(context);
 
-  const treeProvider = new SnippetTreeProvider(library);
+  sidebarProvider = new SnippetSidebarProvider(
+    library,
+    runImport,
+    (id) => previewSnippet(library, id)
+  );
   context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("cplib.snippetTree", treeProvider)
+    vscode.window.registerWebviewViewProvider(
+      "cplib.snippetTree",
+      sidebarProvider
+    )
   );
 
   const refresh = async () => {
     await library.load(extensionContext);
-    treeProvider.refresh();
+    sidebarProvider.refresh();
   };
 
   context.subscriptions.push(
@@ -55,7 +52,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(
       "cplib.importFromTree",
       async (arg?: unknown) => {
-        const id = snippetIdFromArg(arg);
+        const id = typeof arg === "string" ? arg : undefined;
         if (!id) {
           return;
         }
@@ -78,7 +75,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(
       "cplib.previewFromTree",
       async (arg?: unknown) => {
-        const id = snippetIdFromArg(arg);
+        const id = typeof arg === "string" ? arg : undefined;
         if (!id) {
           return;
         }

@@ -16,23 +16,28 @@ export async function previewSnippet(
     detectExisting
   );
 
+  const root = library.get(snippetId);
   const lines: string[] = [
-    `Import plan for ${snippetId}`,
+    root
+      ? `Import plan for ${snippetId} — ${root.name}`
+      : `Import plan for ${snippetId}`,
+  ];
+  if (root?.description) {
+    lines.push(root.description);
+  }
+  lines.push(
     "",
     "Resolved order:",
     ...resolved.order.map((s, i) => {
-      const tag = resolved.skipped.includes(s)
-        ? " (already in file)"
-        : resolved.toInsert.includes(s)
-          ? ""
-          : "";
-      return `  ${i + 1}. ${s.id}${tag}`;
+      const tag = resolved.skipped.includes(s) ? " (already in file)" : "";
+      const desc = s.description ? ` — ${s.description}` : "";
+      return `  ${i + 1}. ${s.id}${desc}${tag}`;
     }),
     "",
     "---",
     "",
-    library.formatImportBlock(resolved.toInsert),
-  ];
+    library.formatImportBlock(resolved.toInsert)
+  );
 
   const doc = await vscode.workspace.openTextDocument({
     content: lines.join("\n"),

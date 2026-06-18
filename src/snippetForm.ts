@@ -249,6 +249,7 @@ function getFormHtml(webview: vscode.Webview): string {
       background: var(--vscode-editor-background);
       padding: 16px 20px 24px;
       max-width: 640px;
+      margin: 0 auto;
     }
     h1 {
       font-size: 1.3em;

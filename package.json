@@ -65,8 +65,9 @@
     "views": {
       "cplib": [
         {
+          "type": "webview",
           "id": "cplib.snippetTree",
-          "name": "Snippets"
+          "name": "CP Library: Snippets"
         }
       ]
     },
@@ -91,18 +92,6 @@
           "command": "cplib.refresh",
           "when": "view == cplib.snippetTree",
           "group": "navigation@2"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "cplib.importFromTree",
-          "when": "view == cplib.snippetTree && viewItem == cplibSnippet",
-          "group": "inline@1"
-        },
-        {
-          "command": "cplib.previewFromTree",
-          "when": "view == cplib.snippetTree && viewItem == cplibSnippet",
-          "group": "inline@2"
         }
       ],
       "editor/context": [

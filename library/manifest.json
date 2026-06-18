@@ -49,6 +49,14 @@
       "deps": []
     },
     {
+      "id": "SparseTable",
+      "file": "Sparse.h",
+      "name": "SparseTable",
+      "description": "SparseTable class with custom Info",
+      "category": "Data Structures",
+      "deps": []
+    },
+    {
       "id": "BinaryLift",
       "file": "BinaryLift.h",
       "name": "BinaryLift",
