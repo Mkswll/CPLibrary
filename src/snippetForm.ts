@@ -397,6 +397,10 @@ function getFormHtml(webview: vscode.Webview): string {
       margin-bottom: 4px;
       font-weight: 500;
     }
+    label .required {
+      color: var(--vscode-errorForeground);
+      margin-left: 2px;
+    }
     .hint {
       font-size: 0.85em;
       color: var(--vscode-descriptionForeground);
@@ -598,7 +602,7 @@ function getFormHtml(webview: vscode.Webview): string {
   <div class="form">
   <h1 id="title">Snippet</h1>
 
-  <label for="id">ID</label>
+  <label for="id">ID <span class="required">*</span></label>
   <span class="hint">Used in // @cplib markers and deps (e.g. HLD)</span>
   <div id="idRenameHint" class="hint" style="display:none">
     Renaming the ID updates it in every other snippet's deps in manifest.json.
@@ -606,13 +610,13 @@ function getFormHtml(webview: vscode.Webview): string {
   </div>
   <input type="text" id="id" autocomplete="off" />
 
-  <label for="name">Display name</label>
+  <label for="name">Display name <span class="required">*</span></label>
   <input type="text" id="name" autocomplete="off" />
 
   <label for="description">Description</label>
   <textarea id="description"></textarea>
 
-  <label for="category">Category</label>
+  <label for="category">Category <span class="required">*</span></label>
   <div class="category-wrap">
     <input
       type="text"
@@ -623,7 +627,7 @@ function getFormHtml(webview: vscode.Webview): string {
     <div class="category-menu" id="categoryMenu" role="listbox"></div>
   </div>
 
-  <label>Snippet file</label>
+  <label>Snippet file <span class="required">*</span></label>
 
   <div id="fileSectionAdd">
     <div class="tabbar" role="tablist">
@@ -644,6 +648,7 @@ function getFormHtml(webview: vscode.Webview): string {
         <input type="text" id="fileNew" autocomplete="off" placeholder="e.g. graph/HLD.h" />
         <button type="button" class="secondary" id="choosePath">Choose path…</button>
       </div>
+      <label for="codeNew">Snippet code <span class="required">*</span></label>
       <textarea id="codeNew" class="code-box" spellcheck="false" placeholder="Paste snippet code here…"></textarea>
     </div>
   </div>
