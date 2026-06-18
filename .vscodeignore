@@ -6,4 +6,3 @@ tsconfig.json
 **/*.ts
 **/*.map
 node_modules/**
-!node_modules/@vscode/codicons/**

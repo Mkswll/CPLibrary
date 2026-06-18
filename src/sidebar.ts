@@ -26,13 +26,7 @@ export class SnippetSidebarProvider implements vscode.WebviewViewProvider {
     _token: vscode.CancellationToken
   ): void {
     this.view = webviewView;
-    const codiconsRoot = vscode.Uri.joinPath(
-      this.extensionUri,
-      "node_modules",
-      "@vscode",
-      "codicons",
-      "dist"
-    );
+    const codiconsRoot = vscode.Uri.joinPath(this.extensionUri, "media", "codicons");
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [codiconsRoot],

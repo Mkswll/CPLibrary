@@ -2,7 +2,7 @@
   "name": "cplib",
   "displayName": "CP Library",
   "description": "Import competitive programming snippets with automatic dependency resolution",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "cplib",
   "engines": {
     "vscode": "^1.85.0"
@@ -134,16 +134,16 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "copy-codicons": "mkdir -p media/codicons && cp node_modules/@vscode/codicons/dist/codicon.css node_modules/@vscode/codicons/dist/codicon.ttf media/codicons/",
+    "postinstall": "npm run copy-codicons",
+    "vscode:prepublish": "npm run compile && npm run copy-codicons",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
     "@types/vscode": "^1.85.0",
+    "@vscode/codicons": "^0.0.45",
     "typescript": "^5.4.0"
-  },
-  "dependencies": {
-    "@vscode/codicons": "^0.0.45"
   }
 }
