@@ -257,6 +257,7 @@ function getSidebarHtml(codiconsUri: string): string {
       white-space: nowrap;
       font-size: 0.92em;
       color: var(--vscode-descriptionForeground);
+      opacity: 0.65;
     }
     .snippet-actions {
       flex: 0 0 auto;
@@ -290,7 +291,7 @@ function getSidebarHtml(codiconsUri: string): string {
       align-items: center;
       gap: 6px;
       height: 22px;
-      padding: 0 8px 0 42px;
+      padding: 0 8px 0 58px;
       overflow: hidden;
       color: var(--vscode-descriptionForeground);
       font-size: 0.92em;
