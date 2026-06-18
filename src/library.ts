@@ -157,6 +157,37 @@ export class Library {
     await this.saveManifest();
   }
 
+  async renameSnippet(oldId: string, newId: string): Promise<string[]> {
+    if (oldId === newId) {
+      return [];
+    }
+    const meta = this.snippets.get(oldId);
+    if (!meta) {
+      throw new Error(`Unknown snippet: ${oldId}`);
+    }
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(newId)) {
+      throw new Error(
+        "ID must start with a letter or underscore and contain only letters, numbers, and underscores."
+      );
+    }
+    if (this.snippets.has(newId)) {
+      throw new Error(`Snippet "${newId}" already exists.`);
+    }
+
+    const dependents = this.getDependents(oldId);
+    for (const snippet of this.snippets.values()) {
+      if (snippet.deps.includes(oldId)) {
+        snippet.deps = snippet.deps.map((dep) => (dep === oldId ? newId : dep));
+      }
+    }
+
+    this.snippets.delete(oldId);
+    this.snippets.set(newId, { ...meta, id: newId });
+    this.validateDeps();
+    await this.saveManifest();
+    return dependents;
+  }
+
   async removeSnippet(id: string): Promise<boolean> {
     const dependents = this.getDependents(id);
     if (dependents.length > 0) {
@@ -169,6 +200,19 @@ export class Library {
     }
     this.validateDeps();
     await this.saveManifest();
+    return true;
+  }
+
+  async deleteSnippet(id: string): Promise<boolean> {
+    const meta = this.snippets.get(id);
+    if (!meta) {
+      return false;
+    }
+    const filePath = path.join(this.libraryPath, meta.file);
+    await this.removeSnippet(id);
+    if (fs.existsSync(filePath)) {
+      await fs.promises.unlink(filePath);
+    }
     return true;
   }
 

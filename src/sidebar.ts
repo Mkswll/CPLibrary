@@ -14,6 +14,7 @@ export class SnippetSidebarProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
 
   constructor(
+    private readonly extensionUri: vscode.Uri,
     private readonly library: Library,
     private readonly onImport: (id: string) => Promise<void>,
     private readonly onPreview: (id: string) => Promise<void>
@@ -25,8 +26,21 @@ export class SnippetSidebarProvider implements vscode.WebviewViewProvider {
     _token: vscode.CancellationToken
   ): void {
     this.view = webviewView;
-    webviewView.webview.options = { enableScripts: true };
-    webviewView.webview.html = getSidebarHtml();
+    const codiconsRoot = vscode.Uri.joinPath(
+      this.extensionUri,
+      "node_modules",
+      "@vscode",
+      "codicons",
+      "dist"
+    );
+    webviewView.webview.options = {
+      enableScripts: true,
+      localResourceRoots: [codiconsRoot],
+    };
+    const codiconsUri = webviewView.webview.asWebviewUri(
+      vscode.Uri.joinPath(codiconsRoot, "codicon.css")
+    );
+    webviewView.webview.html = getSidebarHtml(codiconsUri.toString());
 
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       if (msg.type === "ready") {
@@ -68,12 +82,13 @@ export class SnippetSidebarProvider implements vscode.WebviewViewProvider {
   }
 }
 
-function getSidebarHtml(): string {
+function getSidebarHtml(codiconsUri: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="${codiconsUri}" />
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -178,13 +193,26 @@ function getSidebarHtml(): string {
       background: var(--vscode-list-hoverBackground);
     }
     .chevron {
-      width: 16px;
       flex: 0 0 16px;
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      line-height: 16px;
+      color: var(--vscode-icon-foreground);
       opacity: 0.8;
-      font-size: 10px;
-      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
-    .cat-icon { opacity: 0.85; font-size: 14px; }
+    .tree-icon {
+      flex: 0 0 16px;
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+      line-height: 16px;
+      color: var(--vscode-icon-foreground);
+      opacity: 0.9;
+    }
     .snippet-row {
       display: flex;
       align-items: center;
@@ -206,7 +234,7 @@ function getSidebarHtml(): string {
       align-items: center;
       flex: 1;
       min-width: 0;
-      padding-left: 12px;
+      padding-left: 22px;
       gap: 2px;
     }
     .snippet-main {
@@ -246,8 +274,11 @@ function getSidebarHtml(): string {
       height: 22px;
       padding: 0;
       border-radius: 3px;
-      font-size: 14px;
+      font-size: 16px;
       line-height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
     .icon-btn:hover {
       background: var(--vscode-toolbar-hoverBackground);
@@ -257,9 +288,9 @@ function getSidebarHtml(): string {
     .dep-row {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       height: 22px;
-      padding: 0 8px 0 44px;
+      padding: 0 8px 0 42px;
       overflow: hidden;
       color: var(--vscode-descriptionForeground);
       font-size: 0.92em;
@@ -279,8 +310,9 @@ function getSidebarHtml(): string {
     }
     .dep-toggle {
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
     }
-    .dep-toggle .chevron { display: inline-block; width: 16px; }
   </style>
 </head>
 <body>
@@ -326,6 +358,18 @@ function getSidebarHtml(): string {
       clearBtn.classList.toggle("visible", input.value.length > 0);
     }
 
+    function icon(name) {
+      return '<span class="tree-icon codicon codicon-' + name + '" aria-hidden="true"></span>';
+    }
+
+    function chevron(expanded) {
+      return (
+        '<span class="chevron codicon codicon-chevron-' +
+        (expanded ? "down" : "right") +
+        '" aria-hidden="true"></span>'
+      );
+    }
+
     function render() {
       const filter = input.value.trim();
       const filtered = allSnippets.filter((s) => matchesFilter(s, filter));
@@ -355,7 +399,8 @@ function getSidebarHtml(): string {
         const open = expandedCats.has(cat);
         html += '<div class="category">';
         html += '<div class="cat-header" data-cat="' + esc(cat) + '">';
-        html += '<span class="chevron">' + (open ? "▼" : "▶") + "</span>";
+        html += chevron(open);
+        html += icon("folder");
         html += "<span>" + esc(cat) + "</span>";
         html += "</div>";
         if (open) {
@@ -371,14 +416,15 @@ function getSidebarHtml(): string {
             html += '<div class="snippet-indent">';
             if (hasDeps) {
               html +=
-                '<span class="chevron dep-toggle" data-snippet="' +
+                '<span class="dep-toggle" data-snippet="' +
                 esc(s.id) +
                 '">' +
-                (depsOpen ? "▼" : "▶") +
+                chevron(depsOpen) +
                 "</span>";
             } else {
-              html += '<span class="chevron" style="visibility:hidden">▶</span>';
+              html += '<span class="chevron" style="visibility:hidden">' + chevron(false) + "</span>";
             }
+            html += icon("file-code");
             const tip = s.name + " — " + s.description + depHint;
             html +=
               '<div class="snippet-main" data-import="' +
@@ -394,12 +440,12 @@ function getSidebarHtml(): string {
             html += "</div></div></div>";
             html +=
               '<div class="snippet-actions">' +
-              '<button class="icon-btn" title="Import" data-import="' +
+              '<button type="button" class="icon-btn" title="Import" data-import="' +
               esc(s.id) +
-              '">⤓</button>' +
-              '<button class="icon-btn" title="Preview" data-preview="' +
+              '"><span class="codicon codicon-insert"></span></button>' +
+              '<button type="button" class="icon-btn" title="Preview" data-preview="' +
               esc(s.id) +
-              '">⧉</button>' +
+              '"><span class="codicon codicon-open-preview"></span></button>' +
               "</div>";
             html += "</div>";
             if (hasDeps) {
@@ -414,6 +460,7 @@ function getSidebarHtml(): string {
                   '<div class="dep-row" title="' +
                   esc(d.name + " — " + d.description) +
                   '">';
+                html += icon("link");
                 html += '<span class="snippet-name">' + esc(d.name) + "</span>";
                 html +=
                   '<span class="snippet-desc">' + esc(d.description) + "</span>";

@@ -26,6 +26,13 @@ export interface FormSubmit {
 
 type RefreshFn = () => Promise<void>;
 
+class RenameCancelledError extends Error {
+  constructor() {
+    super("Rename cancelled.");
+    this.name = "RenameCancelledError";
+  }
+}
+
 export async function openSnippetForm(
   library: Library,
   init: FormInit,
@@ -94,13 +101,36 @@ export async function openSnippetForm(
         return;
       }
       if (msg.type === "save") {
-        await handleSave(library, init.mode, msg.data as FormSubmit, refresh);
-        panel.dispose();
+        try {
+          await handleSave(
+            library,
+            init.mode,
+            msg.data as FormSubmit,
+            refresh,
+            init.meta?.id
+          );
+          panel.dispose();
+        } catch (err) {
+          if (err instanceof RenameCancelledError) {
+            panel.webview.postMessage({ type: "error", message: err.message });
+            return;
+          }
+          throw err;
+        }
         return;
       }
       if (msg.type === "remove" && init.mode === "edit" && init.meta) {
-        panel.dispose();
-        await openRemoveConfirm(library, init.meta, refresh);
+        const removed = await openRemoveConfirm(library, init.meta, refresh);
+        if (removed) {
+          panel.dispose();
+        }
+        return;
+      }
+      if (msg.type === "delete" && init.mode === "edit" && init.meta) {
+        const deleted = await openDeleteConfirm(library, init.meta, refresh);
+        if (deleted) {
+          panel.dispose();
+        }
         return;
       }
       if (msg.type === "cancel") {
@@ -117,7 +147,8 @@ async function handleSave(
   library: Library,
   mode: "add" | "edit",
   data: FormSubmit,
-  refresh: RefreshFn
+  refresh: RefreshFn,
+  originalId?: string
 ): Promise<void> {
   const id = data.id.trim();
   const name = data.name.trim();
@@ -133,6 +164,9 @@ async function handleSave(
     );
   }
   if (mode === "add" && library.hasId(id)) {
+    throw new Error(`Snippet "${id}" already exists.`);
+  }
+  if (mode === "edit" && originalId && id !== originalId && library.hasId(id)) {
     throw new Error(`Snippet "${id}" already exists.`);
   }
   if (!name) {
@@ -164,10 +198,34 @@ async function handleSave(
       await fs.promises.writeFile(absFile, data.pastedCode!, "utf8");
     }
   } else {
+    const originalFile = originalId
+      ? library.get(originalId)?.file.replace(/\\/g, "/")
+      : undefined;
+    const absOld = originalFile
+      ? path.join(library.getLibraryPath(), originalFile)
+      : undefined;
+    const pathChanged = Boolean(originalFile && file !== originalFile);
+    const samePath = (a: string, b: string) =>
+      path.resolve(a) === path.resolve(b);
+
     const pasted = data.pastedCode?.trim();
     if (pasted) {
       await fs.promises.mkdir(path.dirname(absFile), { recursive: true });
-      await fs.promises.writeFile(absFile, data.pastedCode!, "utf8");
+      await fs.promises.writeFile(absFile, pasted, "utf8");
+      if (absOld && pathChanged && fs.existsSync(absOld) && !samePath(absOld, absFile)) {
+        await fs.promises.unlink(absOld);
+      }
+    } else if (pathChanged) {
+      if (!absOld || !fs.existsSync(absOld)) {
+        throw new Error(
+          `File not found: ${originalFile}. Paste code or pick a valid path.`
+        );
+      }
+      if (fs.existsSync(absFile) && !samePath(absOld, absFile)) {
+        throw new Error(`File already exists: ${file}`);
+      }
+      await fs.promises.mkdir(path.dirname(absFile), { recursive: true });
+      await fs.promises.rename(absOld, absFile);
     } else if (!fs.existsSync(absFile)) {
       throw new Error(`File not found: ${file}. Paste code or pick a valid path.`);
     }
@@ -194,8 +252,43 @@ async function handleSave(
     deps: data.deps,
   };
 
+  let renameDependents: string[] = [];
+  if (mode === "edit" && originalId && id !== originalId) {
+    const pendingDependents = library.getDependents(originalId);
+    const lines = [
+      `Rename "${originalId}" to "${id}"?`,
+      "",
+      "manifest.json will be updated:",
+      "• This snippet's ID",
+      pendingDependents.length > 0
+        ? `• deps in other snippets: ${pendingDependents.join(", ")}`
+        : "• No other snippets list this ID in their deps",
+      "",
+      "// @cplib markers already in your source files are not changed.",
+    ];
+    const choice = await vscode.window.showWarningMessage(
+      lines.join("\n"),
+      { modal: true },
+      "Rename"
+    );
+    if (choice !== "Rename") {
+      throw new RenameCancelledError();
+    }
+    renameDependents = await library.renameSnippet(originalId, id);
+  }
+
   await library.upsertSnippet(meta);
   await refresh();
+  if (mode === "edit" && originalId && id !== originalId) {
+    const depNote =
+      renameDependents.length > 0
+        ? ` Updated deps in: ${renameDependents.join(", ")}.`
+        : "";
+    vscode.window.showInformationMessage(
+      `Renamed "${originalId}" to "${id}".${depNote} // @cplib markers in open files were not changed.`
+    );
+    return;
+  }
   vscode.window.showInformationMessage(
     mode === "add" ? `Added snippet "${id}".` : `Updated "${id}".`
   );
@@ -205,30 +298,65 @@ export async function openRemoveConfirm(
   library: Library,
   meta: SnippetMeta,
   refresh: RefreshFn
-): Promise<void> {
+): Promise<boolean> {
   const dependents = library.getDependents(meta.id);
   if (dependents.length > 0) {
     vscode.window.showErrorMessage(
       `Cannot remove "${meta.id}": required by ${dependents.join(", ")}. Edit those snippets and remove the dependency first.`
     );
-    return;
+    return false;
   }
 
   const confirm = await vscode.window.showWarningMessage(
-    `Remove "${meta.id}" from manifest.json? (The .h file is not deleted.)`,
+    `Remove "${meta.id}" from the library? (The .h file is not deleted.)`,
     { modal: true },
     "Remove"
   );
   if (confirm !== "Remove") {
-    return;
+    return false;
   }
   try {
     await library.removeSnippet(meta.id);
     await refresh();
     vscode.window.showInformationMessage(`Removed "${meta.id}" from the library.`);
+    return true;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     vscode.window.showErrorMessage(`CP Library: ${message}`);
+    return false;
+  }
+}
+
+export async function openDeleteConfirm(
+  library: Library,
+  meta: SnippetMeta,
+  refresh: RefreshFn
+): Promise<boolean> {
+  const dependents = library.getDependents(meta.id);
+  if (dependents.length > 0) {
+    vscode.window.showErrorMessage(
+      `Cannot delete "${meta.id}": required by ${dependents.join(", ")}. Edit those snippets and remove the dependency first.`
+    );
+    return false;
+  }
+
+  const confirm = await vscode.window.showWarningMessage(
+    `Delete "${meta.id}"? This removes it from the library and deletes ${meta.file}.`,
+    { modal: true },
+    "Delete"
+  );
+  if (confirm !== "Delete") {
+    return false;
+  }
+  try {
+    await library.deleteSnippet(meta.id);
+    await refresh();
+    vscode.window.showInformationMessage(`Deleted snippet "${meta.id}".`);
+    return true;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    vscode.window.showErrorMessage(`CP Library: ${message}`);
+    return false;
   }
 }
 
@@ -242,12 +370,19 @@ function getFormHtml(webview: vscode.Webview): string {
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <style>
     * { box-sizing: border-box; }
+    html {
+      width: 100%;
+    }
     body {
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
       color: var(--vscode-foreground);
       background: var(--vscode-editor-background);
+      width: 100%;
+      margin: 0;
       padding: 16px 20px 24px;
+    }
+    .form {
       max-width: 640px;
       margin: 0 auto;
     }
@@ -267,6 +402,40 @@ function getFormHtml(webview: vscode.Webview): string {
       color: var(--vscode-descriptionForeground);
       margin-bottom: 4px;
     }
+    .category-wrap {
+      position: relative;
+    }
+    .category-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 2px);
+      left: 0;
+      right: 0;
+      z-index: 20;
+      max-height: 180px;
+      overflow-y: auto;
+      background: var(--vscode-dropdown-background, var(--vscode-input-background));
+      border: 1px solid var(--vscode-dropdown-border, var(--vscode-widget-border, #444));
+      border-radius: 2px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .category-menu.open {
+      display: block;
+    }
+    .category-option {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 5px 8px;
+      border: none;
+      background: transparent;
+      color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+      font: inherit;
+      cursor: pointer;
+    }
+    .category-option:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
     input[type="text"], textarea, select {
       width: 100%;
       padding: 6px 8px;
@@ -276,6 +445,11 @@ function getFormHtml(webview: vscode.Webview): string {
       border-radius: 2px;
       font-family: inherit;
       font-size: inherit;
+    }
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--vscode-input-placeholderForeground);
+      opacity: 1;
     }
     textarea { min-height: 72px; resize: vertical; }
     textarea.code-box {
@@ -342,6 +516,12 @@ function getFormHtml(webview: vscode.Webview): string {
       display: flex;
       gap: 10px;
       align-items: center;
+      flex-wrap: wrap;
+    }
+    .danger-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 10px;
     }
     button {
       padding: 6px 14px;
@@ -369,9 +549,7 @@ function getFormHtml(webview: vscode.Webview): string {
       background: transparent;
       color: var(--vscode-errorForeground);
       border: 1px solid var(--vscode-errorForeground);
-      margin-left: auto;
     }
-    datalist { display: none; }
     .tabbar {
       display: flex;
       gap: 0;
@@ -417,10 +595,15 @@ function getFormHtml(webview: vscode.Webview): string {
   </style>
 </head>
 <body>
+  <div class="form">
   <h1 id="title">Snippet</h1>
 
   <label for="id">ID</label>
   <span class="hint">Used in // @cplib markers and deps (e.g. HLD)</span>
+  <div id="idRenameHint" class="hint" style="display:none">
+    Renaming the ID updates it in every other snippet's deps in manifest.json.
+    // @cplib markers already in your source files are not changed.
+  </div>
   <input type="text" id="id" autocomplete="off" />
 
   <label for="name">Display name</label>
@@ -430,8 +613,15 @@ function getFormHtml(webview: vscode.Webview): string {
   <textarea id="description"></textarea>
 
   <label for="category">Category</label>
-  <input type="text" id="category" list="categories" autocomplete="off" />
-  <datalist id="categories"></datalist>
+  <div class="category-wrap">
+    <input
+      type="text"
+      id="category"
+      autocomplete="off"
+      placeholder="Choose from existing, or type a new category to create"
+    />
+    <div class="category-menu" id="categoryMenu" role="listbox"></div>
+  </div>
 
   <label>Snippet file</label>
 
@@ -476,7 +666,11 @@ function getFormHtml(webview: vscode.Webview): string {
   <div class="actions">
     <button type="button" class="primary" id="save">Save</button>
     <button type="button" class="secondary" id="cancel">Cancel</button>
-    <button type="button" class="danger" id="remove" style="display:none">Remove from library</button>
+    <div class="danger-actions" id="dangerActions" style="display:none">
+      <button type="button" class="danger" id="remove">Remove from library</button>
+      <button type="button" class="danger" id="delete">Delete snippet</button>
+    </div>
+  </div>
   </div>
 
   <script>
@@ -484,6 +678,44 @@ function getFormHtml(webview: vscode.Webview): string {
     let mode = "add";
     let excludeId = "";
     let activeFileTab = "existing";
+    let categoryOptions = [];
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function closeCategoryMenu() {
+      document.getElementById("categoryMenu").classList.remove("open");
+    }
+
+    function updateCategoryMenu() {
+      const input = document.getElementById("category");
+      const menu = document.getElementById("categoryMenu");
+      const query = input.value.trim().toLowerCase();
+      const matches = categoryOptions.filter(
+        (cat) => !query || cat.toLowerCase().includes(query)
+      );
+      if (document.activeElement !== input || matches.length === 0) {
+        closeCategoryMenu();
+        menu.innerHTML = "";
+        return;
+      }
+      menu.innerHTML = matches
+        .map(
+          (cat) =>
+            '<button type="button" class="category-option" role="option" data-value="' +
+            escHtml(cat) +
+            '">' +
+            escHtml(cat) +
+            "</button>"
+        )
+        .join("");
+      menu.classList.add("open");
+    }
 
     function showError(msg) {
       const el = document.getElementById("error");
@@ -555,7 +787,9 @@ function getFormHtml(webview: vscode.Webview): string {
 
         const idEl = document.getElementById("id");
         idEl.value = d.meta ? d.meta.id : "";
-        idEl.disabled = mode === "edit";
+        idEl.disabled = false;
+        document.getElementById("idRenameHint").style.display =
+          mode === "edit" ? "block" : "none";
 
         document.getElementById("name").value = d.meta ? d.meta.name : "";
         document.getElementById("description").value = d.meta ? d.meta.description : "";
@@ -575,18 +809,13 @@ function getFormHtml(webview: vscode.Webview): string {
           setFileTab("existing");
         }
 
-        const dl = document.getElementById("categories");
-        dl.innerHTML = "";
-        for (const cat of d.categories) {
-          const opt = document.createElement("option");
-          opt.value = cat;
-          dl.appendChild(opt);
-        }
+        categoryOptions = d.categories;
+        closeCategoryMenu();
 
         renderDeps(d.depOptions, d.meta ? d.meta.deps : []);
 
-        document.getElementById("remove").style.display =
-          mode === "edit" ? "inline-block" : "none";
+        document.getElementById("dangerActions").style.display =
+          mode === "edit" ? "flex" : "none";
       }
       if (msg.type === "filePicked") {
         if (msg.target === "existing") {
@@ -642,6 +871,23 @@ function getFormHtml(webview: vscode.Webview): string {
       document.getElementById("fileNew").dataset.auto = "0";
     });
 
+    const categoryInput = document.getElementById("category");
+    const categoryMenu = document.getElementById("categoryMenu");
+    categoryInput.addEventListener("focus", updateCategoryMenu);
+    categoryInput.addEventListener("input", updateCategoryMenu);
+    categoryInput.addEventListener("blur", () => {
+      setTimeout(closeCategoryMenu, 120);
+    });
+    categoryMenu.addEventListener("mousedown", (e) => {
+      const option = e.target.closest(".category-option");
+      if (!option) {
+        return;
+      }
+      e.preventDefault();
+      categoryInput.value = option.dataset.value;
+      closeCategoryMenu();
+    });
+
     document.getElementById("save").addEventListener("click", () => {
       clearError();
       let file = "";
@@ -681,6 +927,10 @@ function getFormHtml(webview: vscode.Webview): string {
 
     document.getElementById("remove").addEventListener("click", () => {
       vscode.postMessage({ type: "remove" });
+    });
+
+    document.getElementById("delete").addEventListener("click", () => {
+      vscode.postMessage({ type: "delete" });
     });
 
     vscode.postMessage({ type: "ready" });
